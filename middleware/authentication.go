@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/aldinofrizal/bumpaban/helpers"
@@ -11,7 +10,6 @@ import (
 
 func Authentication() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		fmt.Println("masuk")
 		token := ctx.Request.Header.Get("token")
 		if token == "" {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

@@ -9,15 +9,23 @@ import (
 
 type User struct {
 	gorm.Model
-	Name     string `form:"name" json:"name" binding:"required"`
-	Email    string `form:"email" json:"email" binding:"required"`
-	Password string `form:"password" json:"password" binding:"required"`
+	Name     string  `form:"name" json:"name" binding:"required"`
+	Email    string  `form:"email" json:"email" binding:"required"`
+	Password string  `form:"password" json:"password" binding:"required"`
+	Boards   []Board `gorm:"many2many:members" json:"boards"`
 }
 
 type UserReponse struct {
 	ID    int    `form:"id" json:"id"`
 	Name  string `form:"name" json:"name"`
 	Email string `form:"email" json:"email"`
+}
+
+type UserReponseWithRole struct {
+	ID    int    `form:"id" json:"id"`
+	Name  string `form:"name" json:"name"`
+	Email string `form:"email" json:"email"`
+	Role  string `form:"role" json:"role"`
 }
 
 type LoginRequest struct {
