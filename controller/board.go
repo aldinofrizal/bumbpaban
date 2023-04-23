@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/aldinofrizal/bumpaban/models"
@@ -9,6 +10,10 @@ import (
 )
 
 type BoardController struct{}
+
+type UpdateStatusRequest struct {
+	Status int `form:"status" json:"status" binding:"required"`
+}
 
 func BoardControllerImpl() *BoardController {
 	return &BoardController{}
@@ -67,21 +72,91 @@ func (r *BoardController) Index(ctx *gin.Context) {
 }
 
 func (r *BoardController) Detail(ctx *gin.Context) {
-	id := ctx.Param("id")
-	board := models.Board{}
+	board := ctx.MustGet("board").(*models.Board)
 
-	if err := models.DB.Preload("Members.User").First(&board, id).Error; err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"erorr": err.Error()})
-		return
+	result := models.DB.Where("board_id = ?", board.ID).Find(&board.Tasks)
+	if result.Error != nil {
+		panic(result.Error.Error())
 	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "OK",
-		"board":   board.GetIndexResponse(),
+		"message":             "OK",
+		"board":               board.GetIndexResponse(),
+		"task_status_mapping": models.STATUS,
 	})
 }
 
 func (r *BoardController) Delete(ctx *gin.Context) {
+	board := ctx.MustGet("board").(*models.Board)
+	if err := models.DB.Delete(board).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "OK",
+		"message": fmt.Sprintf("Success delete %s board", board.Title),
+	})
+}
+
+func (r *BoardController) AddTask(ctx *gin.Context) {
+	board := ctx.MustGet("board").(*models.Board)
+	newTask := models.Task{
+		BoardId: int(board.ID),
+	}
+	if err := ctx.ShouldBindJSON(&newTask); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := models.DB.Create(&newTask).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message":             "Successfully add new task",
+		"task":                newTask,
+		"task_status_mapping": models.STATUS,
+	})
+}
+
+func (r *BoardController) UpdateStatus(ctx *gin.Context) {
+	var task models.Task
+	if err := models.DB.First(&task, ctx.Param("task_id")).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	var requestStatus UpdateStatusRequest
+	if err := ctx.ShouldBindJSON(&requestStatus); err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result := models.DB.Model(&task).Update("status", requestStatus.Status)
+	if result.Error != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
+		return
+	}
+	newStatus := models.STATUS[requestStatus.Status]
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Successfully update task %d to %s", task.ID, newStatus),
+	})
+}
+
+func (r *BoardController) DeleteTask(ctx *gin.Context) {
+	var task models.Task
+	if err := models.DB.First(&task, ctx.Param("task_id")).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := models.DB.Delete(&task).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Successfully delete task %d", task.ID),
 	})
 }

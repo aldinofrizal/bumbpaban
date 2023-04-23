@@ -24,8 +24,11 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		board.POST("", boardController.Create)
 		board.GET("", boardController.Index)
-		board.GET("/:id", boardController.Detail)
-		board.DELETE("/:id", boardController.Delete)
-		board.POST("/add/:id", boardAuthz.AddMember(), boardController.AddMember)
+		board.GET("/:id", boardAuthz.CanAccess(), boardController.Detail)
+		board.DELETE("/:id", boardAuthz.ManageBoard(), boardController.Delete)
+		board.POST("/users/:id", boardAuthz.ManageBoard(), boardController.AddMember)
+		board.POST("/tasks/:id", boardAuthz.ManageBoard(), boardController.AddTask)
+		board.PATCH("/tasks/:id/:task_id", boardAuthz.CanAccess(), boardController.UpdateStatus)
+		board.DELETE("/tasks/:id/:task_id", boardAuthz.ManageBoard(), boardController.DeleteTask)
 	}
 }
