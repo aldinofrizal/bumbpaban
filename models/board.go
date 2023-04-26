@@ -12,7 +12,7 @@ type Board struct {
 
 type BoardResponse struct {
 	ID    uint                  `json:"id"`
-	Title string                `json:"tite"`
+	Title string                `json:"title"`
 	Users []UserReponseWithRole `json:"members"`
 	Tasks []Task                `json:"tasks"`
 }

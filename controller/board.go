@@ -34,14 +34,14 @@ func (r *BoardController) Create(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "OK",
-		"board":   board,
+		"board":   board.GetIndexResponse(),
 	})
 }
 
 func (r *BoardController) AddMember(ctx *gin.Context) {
 	board := ctx.MustGet("board").(*models.Board)
 	addUser := struct {
-		UserId int `form:"user_id" json:"user_id" binding:"required"`
+		Email string `form:"email" json:"email" binding:"required"`
 	}{}
 
 	if err := ctx.ShouldBindJSON(&addUser); err != nil {
@@ -49,7 +49,13 @@ func (r *BoardController) AddMember(ctx *gin.Context) {
 		return
 	}
 
-	if err := services.AddMember(board, addUser.UserId); err != nil {
+	var user models.User
+	if err := models.DB.Where("email = ?", addUser.Email).First(&user).Error; err != nil {
+		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := services.AddMember(board, int(user.ID)); err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -73,6 +79,7 @@ func (r *BoardController) Index(ctx *gin.Context) {
 
 func (r *BoardController) Detail(ctx *gin.Context) {
 	board := ctx.MustGet("board").(*models.Board)
+	user := ctx.MustGet("user").(*models.User)
 
 	result := models.DB.Where("board_id = ?", board.ID).Find(&board.Tasks)
 	if result.Error != nil {
@@ -83,6 +90,7 @@ func (r *BoardController) Detail(ctx *gin.Context) {
 		"message":             "OK",
 		"board":               board.GetIndexResponse(),
 		"task_status_mapping": models.STATUS,
+		"is_owner":            board.GetOwnerId() == int(user.ID),
 	})
 }
 

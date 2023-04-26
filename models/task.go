@@ -19,7 +19,7 @@ type Task struct {
 	Title       string `form:"title" json:"title" binding:"required"`
 	Description string `form:"description" json:"description" binding:"required"`
 	BoardId     int    `form:"board_id" json:"board_id" binding:"required"`
-	Status      int
+	Status      int    `form:"status" json:"status"`
 }
 
 func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
