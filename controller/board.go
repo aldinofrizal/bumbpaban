@@ -81,7 +81,7 @@ func (r *BoardController) Detail(ctx *gin.Context) {
 	board := ctx.MustGet("board").(*models.Board)
 	user := ctx.MustGet("user").(*models.User)
 
-	result := models.DB.Where("board_id = ?", board.ID).Find(&board.Tasks)
+	result := models.DB.Where("board_id = ?", board.ID).Preload("Assignee").Find(&board.Tasks)
 	if result.Error != nil {
 		panic(result.Error.Error())
 	}
@@ -108,14 +108,20 @@ func (r *BoardController) Delete(ctx *gin.Context) {
 
 func (r *BoardController) AddTask(ctx *gin.Context) {
 	board := ctx.MustGet("board").(*models.Board)
-	newTask := models.Task{
+	requestTask := models.TaskRequest{
 		BoardId: int(board.ID),
 	}
-	if err := ctx.ShouldBindJSON(&newTask); err != nil {
+	if err := ctx.ShouldBindJSON(&requestTask); err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	newTask := models.Task{
+		Title:       requestTask.Title,
+		Description: requestTask.Description,
+		BoardId:     requestTask.BoardId,
+		// AssigneeId:  requestTask.AssigneeId,
+	}
 	if err := models.DB.Create(&newTask).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -129,6 +135,7 @@ func (r *BoardController) AddTask(ctx *gin.Context) {
 }
 
 func (r *BoardController) UpdateStatus(ctx *gin.Context) {
+	user := ctx.MustGet("user").(*models.User)
 	var task models.Task
 	if err := models.DB.First(&task, ctx.Param("task_id")).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -141,8 +148,14 @@ func (r *BoardController) UpdateStatus(ctx *gin.Context) {
 		return
 	}
 
-	result := models.DB.Model(&task).Update("status", requestStatus.Status)
+	task.Status = requestStatus.Status
+	if task.Unassigned() {
+		task.AssigneeId = int(user.ID)
+	}
+
+	result := models.DB.Save(&task)
 	if result.Error != nil {
+		fmt.Println("error here", result.Error.Error())
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": result.Error.Error()})
 		return
 	}

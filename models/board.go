@@ -14,7 +14,7 @@ type BoardResponse struct {
 	ID    uint                  `json:"id"`
 	Title string                `json:"title"`
 	Users []UserReponseWithRole `json:"members"`
-	Tasks []Task                `json:"tasks"`
+	Tasks []TaskResponse        `json:"tasks"`
 }
 
 func (b *Board) GetOwnerId() int {
@@ -46,10 +46,15 @@ func (b *Board) GetIndexResponse() BoardResponse {
 		})
 	}
 
+	tasks := []TaskResponse{}
+	for _, task := range b.Tasks {
+		tasks = append(tasks, task.GetReponse())
+	}
+
 	return BoardResponse{
 		ID:    b.ID,
 		Title: b.Title,
 		Users: members,
-		Tasks: b.Tasks,
+		Tasks: tasks,
 	}
 }
