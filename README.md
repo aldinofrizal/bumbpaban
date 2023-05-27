@@ -1,4 +1,4 @@
-# Bumpaban
+# Bumpaban DOCS
 
 ## Migrations
 - create migrations
